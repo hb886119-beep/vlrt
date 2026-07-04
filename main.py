@@ -1,10 +1,10 @@
 import streamlit as st
-import pandas as pd
 import sqlite3
+import pandas as pd
 
-st.set_page_config(page_title="Valorant Weapon Analytics", layout="wide")
+st.set_page_config(page_title="Valorant Dashboard", layout="wide")
 
-st.title("🔫 발로란트 무기 데미지 풀 분석")
+st.title("🔫 발로란트 무기 분석 대시보드")
 
 # -----------------------
 # DB 연결
@@ -13,7 +13,7 @@ def get_connection():
     return sqlite3.connect("valorant.db")
 
 # -----------------------
-# 풀 데이터 초기화
+# DB 초기화
 # -----------------------
 def init_db():
     conn = get_connection()
@@ -25,7 +25,9 @@ def init_db():
         range INTEGER,
         damage_head INTEGER,
         damage_body INTEGER,
-        damage_leg INTEGER
+        damage_leg INTEGER,
+        price INTEGER,
+        pick_rate REAL
     )
     """)
 
@@ -33,125 +35,37 @@ def init_db():
     if cur.fetchone()[0] == 0:
 
         data = [
+            ("Vandal", 0, 160, 40, 34, 2900, 18.5),
+            ("Phantom", 0, 156, 39, 33, 2900, 22.1),
+            ("Operator", 0, 255, 150, 127, 4700, 12.3),
+            ("Sheriff", 0, 160, 55, 47, 800, 10.2),
+            ("Ghost", 0, 105, 30, 26, 500, 14.4),
 
-            # =====================
-            # RIFLES
-            # =====================
-            ("Vandal", 0, 160, 40, 34),
-            ("Vandal", 15, 140, 35, 30),
-            ("Vandal", 30, 124, 30, 26),
+            ("Spectre", 10, 78, 26, 22, 1600, 16.0),
+            ("Stinger", 10, 67, 27, 23, 1100, 8.9),
+            ("Judge", 10, 34, 17, 14, 1850, 9.1),
+            ("Bucky", 10, 40, 20, 17, 850, 7.5),
+            ("Marshal", 0, 202, 101, 85, 950, 6.8),
 
-            ("Phantom", 0, 156, 39, 33),
-            ("Phantom", 15, 140, 33, 28),
-            ("Phantom", 30, 124, 30, 26),
+            ("Bulldog", 20, 116, 35, 30, 2050, 11.2),
+            ("Guardian", 20, 195, 65, 49, 2250, 5.4),
+            ("Ares", 20, 72, 30, 25, 1600, 4.9),
+            ("Odin", 20, 95, 38, 32, 3200, 3.8),
+            ("Classic", 0, 78, 26, 22, 0, 100.0),
 
-            ("Guardian", 0, 195, 65, 49),
-            ("Guardian", 15, 195, 65, 49),
-            ("Guardian", 30, 195, 65, 49),
-
-            ("Bulldog", 0, 116, 35, 30),
-            ("Bulldog", 15, 116, 35, 30),
-            ("Bulldog", 30, 116, 35, 30),
-
-            # =====================
-            # SMG
-            # =====================
-            ("Spectre", 0, 78, 26, 22),
-            ("Spectre", 15, 66, 22, 18),
-            ("Spectre", 30, 62, 20, 16),
-
-            ("Stinger", 0, 67, 27, 23),
-            ("Stinger", 15, 62, 25, 21),
-            ("Stinger", 30, 58, 23, 19),
-
-            # =====================
-            # SNIPERS
-            # =====================
-            ("Operator", 0, 255, 150, 127),
-            ("Operator", 50, 255, 150, 127),
-
-            ("Marshal", 0, 202, 101, 85),
-            ("Marshal", 50, 202, 101, 85),
-
-            # =====================
-            # HEAVY
-            # =====================
-            ("Ares", 0, 72, 30, 25),
-            ("Ares", 20, 67, 28, 24),
-            ("Ares", 40, 62, 26, 22),
-
-            ("Odin", 0, 95, 38, 32),
-            ("Odin", 20, 85, 35, 30),
-            ("Odin", 40, 75, 32, 28),
-
-            # =====================
-            # SIDEARMS
-            # =====================
-            ("Sheriff", 0, 160, 55, 47),
-            ("Sheriff", 15, 145, 50, 42),
-            ("Sheriff", 30, 145, 50, 42),
-
-            ("Ghost", 0, 105, 30, 26),
-            ("Ghost", 15, 88, 25, 22),
-            ("Ghost", 30, 78, 22, 19),
-
-            ("Classic", 0, 78, 26, 22),
-            ("Classic", 15, 78, 26, 22),
-            ("Classic", 30, 78, 26, 22),
-
-            ("Frenzy", 0, 78, 27, 23),
-            ("Frenzy", 15, 63, 21, 18),
-            ("Frenzy", 30, 63, 21, 18),
-
-            # =====================
-            # SHOTGUNS
-            # =====================
-            ("Judge", 0, 34, 17, 14),
-            ("Judge", 10, 20, 10, 8),
-            ("Judge", 20, 12, 6, 5),
-
-            ("Bucky", 0, 40, 20, 17),
-            ("Bucky", 10, 34, 17, 14),
-            ("Bucky", 20, 18, 9, 7),
-
+            ("Frenzy", 0, 78, 27, 23, 450, 13.2),
+            ("Shorty", 0, 36, 12, 10, 150, 5.1),
+            ("Ghost", 20, 88, 25, 22, 500, 14.4),
+            ("Vandal", 20, 140, 35, 30, 2900, 18.5),
+            ("Phantom", 20, 140, 33, 28, 2900, 22.1),
         ]
 
-        cur.executemany("INSERT INTO guns VALUES (?, ?, ?, ?, ?)", data)
+        cur.executemany("INSERT INTO guns VALUES (?, ?, ?, ?, ?, ?, ?)", data)
 
     conn.commit()
     conn.close()
 
-# -----------------------
-# 데이터 로드
-# -----------------------
-@st.cache_data
-def load_data():
-    conn = get_connection()
-    df = pd.read_sql_query("SELECT * FROM guns", conn)
-    conn.close()
-    return df
-
-# -----------------------
-# 실행
-# -----------------------
 init_db()
-df = load_data()
 
-# -----------------------
-# UI
-# -----------------------
-weapon = st.sidebar.selectbox("무기 선택", df["weapon"].unique())
-filtered = df[df["weapon"] == weapon]
-
-st.subheader(f"📊 {weapon} 데이터")
-st.dataframe(filtered)
-
-st.subheader("💥 거리별 데미지")
-st.line_chart(
-    filtered.set_index("range")[["damage_head", "damage_body", "damage_leg"]]
-)
-
-st.subheader("🏆 무기 평균 비교")
-st.bar_chart(
-    df.groupby("weapon")[["damage_head", "damage_body", "damage_leg"]].mean()
-)
+st.success("DB 초기화 완료 🚀")
+st.write("왼쪽 메뉴에서 Pages 선택하세요")
