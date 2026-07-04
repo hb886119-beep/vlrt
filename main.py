@@ -1,13 +1,47 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-import matplotlib.pyplot as plt
+
+st.set_page_config(page_title="Valorant Damage", layout="wide")
+
+st.title("🔫 발로란트 총 데미지 분석")
 
 # -----------------------
-# DB 연결 (SQLite 기준)
+# DB 생성 + 연결
 # -----------------------
 def get_connection():
     return sqlite3.connect("valorant.db")
+
+def init_db():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # 테이블 없으면 생성
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS guns (
+        weapon TEXT,
+        range INTEGER,
+        damage_head INTEGER,
+        damage_body INTEGER,
+        damage_leg INTEGER
+    )
+    """)
+
+    # 데이터가 없으면 샘플 넣기
+    cur.execute("SELECT COUNT(*) FROM guns")
+    if cur.fetchone()[0] == 0:
+        sample_data = [
+            ("Vandal", 0, 160, 40, 34),
+            ("Vandal", 10, 140, 35, 30),
+            ("Vandal", 20, 124, 30, 26),
+            ("Phantom", 0, 156, 39, 33),
+            ("Phantom", 10, 140, 33, 28),
+            ("Phantom", 20, 124, 30, 26),
+        ]
+        cur.executemany("INSERT INTO guns VALUES (?, ?, ?, ?, ?)", sample_data)
+
+    conn.commit()
+    conn.close()
 
 # -----------------------
 # 데이터 로드
@@ -20,53 +54,21 @@ def load_data():
     return df
 
 # -----------------------
-# UI 설정
+# 실행 순서 중요
 # -----------------------
-st.set_page_config(page_title="Valorant Gun Damage", layout="wide")
-
-st.title("🔫 발로란트 총 데미지 분석")
-
+init_db()
 df = load_data()
 
 # -----------------------
-# 사이드 필터
+# UI
 # -----------------------
-st.sidebar.header("필터")
+weapon = st.sidebar.selectbox("무기 선택", df["weapon"].unique())
+filtered = df[df["weapon"] == weapon]
 
-weapon_list = df["weapon"].unique()
-selected_weapon = st.sidebar.selectbox("무기 선택", weapon_list)
+st.dataframe(filtered)
 
-filtered_df = df[df["weapon"] == selected_weapon]
+st.line_chart(
+    filtered.set_index("range")[["damage_head", "damage_body", "damage_leg"]]
+)
 
-# -----------------------
-# 데이터 보기
-# -----------------------
-st.subheader("📊 데이터 테이블")
-st.dataframe(filtered_df)
-
-# -----------------------
-# 데미지 시각화
-# -----------------------
-st.subheader("💥 거리별 데미지")
-
-fig, ax = plt.subplots()
-
-ax.plot(filtered_df["range"], filtered_df["damage_head"], label="Head")
-ax.plot(filtered_df["range"], filtered_df["damage_body"], label="Body")
-ax.plot(filtered_df["range"], filtered_df["damage_leg"], label="Leg")
-
-ax.set_xlabel("Distance")
-ax.set_ylabel("Damage")
-ax.set_title(f"{selected_weapon} Damage Drop-off")
-ax.legend()
-
-st.pyplot(fig)
-
-# -----------------------
-# 전체 비교 (옵션)
-# -----------------------
-st.subheader("🔥 무기별 평균 데미지 비교")
-
-avg_df = df.groupby("weapon")[["damage_head", "damage_body", "damage_leg"]].mean()
-
-st.bar_chart(avg_df)
+st.bar_chart(df.groupby("weapon")[["damage_head", "damage_body", "damage_leg"]].mean())
